@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
+from dask.distributed.utils_test import loop  # noqa: F401
 from pandas.testing import assert_frame_equal
 
 try:
@@ -35,6 +36,19 @@ def timeseries_df(c):
 @pytest.fixture()
 def df_simple():
     return pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+
+
+@pytest.fixture()
+def df_wide():
+    return pd.DataFrame(
+        {
+            "a": [0, 1, 2],
+            "b": [3, 4, 5],
+            "c": [6, 7, 8],
+            "d": [9, 10, 11],
+            "e": [12, 13, 14],
+        }
+    )
 
 
 @pytest.fixture()
@@ -126,6 +140,7 @@ def gpu_datetime_table(datetime_table):
 @pytest.fixture()
 def c(
     df_simple,
+    df_wide,
     df,
     user_table_1,
     user_table_2,
@@ -142,6 +157,7 @@ def c(
 ):
     dfs = {
         "df_simple": df_simple,
+        "df_wide": df_wide,
         "df": df,
         "user_table_1": user_table_1,
         "user_table_2": user_table_2,
@@ -296,3 +312,15 @@ skip_if_external_scheduler = pytest.mark.skipif(
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )
+
+
+@pytest.fixture()
+def cluster(loop):  # noqa: F811
+    with LocalCluster(loop=loop) as cluster:
+        yield cluster
+
+
+@pytest.fixture()
+def client(cluster):
+    with Client(cluster) as client:
+        yield client
